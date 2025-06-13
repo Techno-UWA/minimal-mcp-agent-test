@@ -13,13 +13,29 @@ except ImportError:
 class GroqClient:
     """A wrapper for the Groq API client with sensible defaults and conversation management."""
     
-    def __init__(self, api_key=None, default_model="meta-llama/llama-4-scout-17b-16e-instruct"):
+    def __init__(
+            self, 
+            api_key=None, 
+            default_model="meta-llama/llama-4-scout-17b-16e-instruct",
+            conversation_history=[],
+            temperature=1.0,
+            max_completion_tokens=1024,
+            top_p=1.0,
+            stop=None,
+            return_full=False
+            ):
+        
         """
         Initialize the Groq client with default settings.
         
         Args:
             api_key (str, optional): API key for Groq. If not provided, will use GROQ_API_KEY env var.
             default_model (str): Default model to use for completions.
+            temperature (float): Default sampling temperature (0-1)
+            max_completion_tokens (int): Default maximum tokens in response
+            top_p (float): Default top-p sampling parameter
+            stop (str or list, optional): Default stop sequences
+            return_full (bool): Default return behavior
         """
         api_key = api_key or os.environ.get("GROQ_API_KEY")
         if not api_key:
@@ -27,27 +43,47 @@ class GroqClient:
         
         self.client = Groq(api_key=api_key)
         self.default_model = default_model
-        self.conversation_history = []
+        self.temperature = temperature
+        self.max_completion_tokens = max_completion_tokens
+        self.top_p = top_p
+        self.stop = stop
+        self.return_full = return_full
+        self.conversation_history = conversation_history
+        
+    @property
+    def defaults(self):
+        """Returns a dictionary with current default values."""
+        return {
+            "model": self.default_model,
+            "temperature": self.temperature,
+            "max_completion_tokens": self.max_completion_tokens,
+            "top_p": self.top_p,
+            "stop": self.stop,
+            "return_full": self.return_full,
+            "conversation_history": self.conversation_history
+        }
     
-    def ask(self, prompt, model=None, temperature=1.0, max_completion_tokens=1024, 
-            top_p=1.0, stop=None, messages=None, return_full=False):
+    def ask(self, prompt, model=None, temperature=None, max_completion_tokens=None, 
+            top_p=None, stop=None, messages=None, return_full=None):
         """
         Send a prompt to the model and get a response.
         
         Args:
             prompt (str): The prompt to send to the model
             model (str, optional): Model to use. Defaults to instance default.
-            temperature (float): Sampling temperature (0-1)
-            max_completion_tokens (int): Maximum tokens in response
-            top_p (float): Top-p sampling parameter
+            temperature (float, optional): Sampling temperature (0-1)
+            max_completion_tokens (int, optional): Maximum tokens in response
+            top_p (float, optional): Top-p sampling parameter
             stop (str or list, optional): Stop sequences
             messages (list, optional): Override conversation history with custom messages
-            return_full (bool): If True, returns full completion object. Otherwise just message.
+            return_full (bool, optional): If True, returns full completion object. Otherwise just message.
         
         Returns:
             Union[str, ChatCompletion]: Either the response text or full response object
         """
-        model = model or self.default_model
+        # Use provided values or fall back to defaults - ultra concise one-liner
+        for key in ["model", "temperature", "max_completion_tokens", "top_p", "stop", "return_full"]:
+            locals()[key] = locals()[key] if locals()[key] is not None else self.defaults[key]
         
         if messages is not None:
             # Use provided messages (don't modify conversation history)
@@ -76,18 +112,37 @@ class GroqClient:
         
         return completion if return_full else message_content
     
-    def agent(self, prompt, messages=None):
+    def agent(self, prompt, model=None, temperature=None, max_completion_tokens=None, 
+             top_p=None, stop=None, messages=None, return_full=None):
         """
         Use Groq's agentic capabilities with the compound-beta model.
         
         Args:
             prompt (str): The prompt to send
+            model (str, optional): Model to use. Defaults to "compound-beta" for agent capabilities.
+            temperature (float, optional): Sampling temperature
+            max_completion_tokens (int, optional): Maximum tokens in response
+            top_p (float, optional): Top-p sampling parameter
+            stop (str or list, optional): Stop sequences
             messages (list, optional): Custom message history
+            return_full (bool, optional): If True, returns full completion object
             
         Returns:
-            str: The assistant's response
+            Union[str, ChatCompletion]: The assistant's response or full completion object
         """
-        return self.ask(prompt, model="compound-beta", messages=messages)
+        # Use compound-beta model by default for agent capabilities, but allow override
+        agent_model = model if model is not None else "compound-beta"
+        
+        return self.ask(
+            prompt=prompt, 
+            model=agent_model, 
+            temperature=temperature,
+            max_completion_tokens=max_completion_tokens,
+            top_p=top_p,
+            stop=stop,
+            messages=messages,
+            return_full=return_full
+        )
     
     def reset_conversation(self):
         """Clear the conversation history."""
@@ -96,6 +151,10 @@ class GroqClient:
     def get_conversation_history(self):
         """Get the current conversation history."""
         return self.conversation_history.copy()
+
+
+
+
 
 if __name__ == "__main__":
     # Example usage of the new class-based approach
