@@ -13,7 +13,7 @@ except ImportError:
 class GroqClient:
     """A wrapper for the Groq API client with sensible defaults and conversation management."""
     
-    def __init__(self, api_key=None, default_model="meta-llama/llama-4-scout-17b-16e-instruct"):
+    def __init__(self, api_key=None, default_model="meta-llama/llama-4-scout-17b-16e-instruct", tools=None):
         """
         Initialize the Groq client with default settings.
         
@@ -28,6 +28,7 @@ class GroqClient:
         self.client = Groq(api_key=api_key)
         self.default_model = default_model
         self.conversation_history = []
+        self.tools = tools
     
     def ask(self, prompt, model=None, temperature=1.0, max_completion_tokens=1024, 
             top_p=1.0, stop=None, messages=None, return_full=False):
@@ -66,6 +67,8 @@ class GroqClient:
             top_p=top_p,
             stream=False,
             stop=stop,
+            tools=self.tools,
+            tool_choice="auto" # Let our LLM decide when to use tools
         )
         
         message_content = completion.choices[0].message.content
