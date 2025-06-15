@@ -1,3 +1,8 @@
 mcp
 groq
 python-dotenv
+
+# Optional dependencies for langgraph agent file
+langchain
+langchain-groq
+langgraph
