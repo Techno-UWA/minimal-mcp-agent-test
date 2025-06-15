@@ -1,9 +1,13 @@
 import os
 from typing import Annotated
+from dotenv import load_dotenv
+
+from langchain.chat_models import init_chat_model
+from langgraph.prebuilt import create_react_agent
+
 
 # Try loading environment variables (safely)
 try:
-    from dotenv import load_dotenv
     load_dotenv()
 except ImportError:
     # dotenv not installed, will rely on system environment variables
@@ -13,8 +17,6 @@ api_key = os.environ.get("GROQ_API_KEY")
 if not api_key:
     raise ValueError("Please set GROQ_API_KEY environment variable")
         
-from langchain.chat_models import init_chat_model
-from langgraph.prebuilt import create_react_agent
 
 # Use a valid Groq model name
 model = init_chat_model("llama3-8b-8192", model_provider="groq")
